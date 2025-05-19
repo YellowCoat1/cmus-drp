@@ -1,4 +1,6 @@
 use std::process::Command;
+use std::thread::sleep;
+use std::time::Duration;
 use discord_rich_presence::*;
 
 #[derive(Debug)]
@@ -12,12 +14,22 @@ struct Song {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>>{
-    let mut client = DiscordIpcClient::new("1360519977819439134")?;
+    let mut client: Option<DiscordIpcClient> = None;
+
+    while let None = client {
+        match DiscordIpcClient::new("1360519977819439134") {
+            Ok(s) => client = Some(s),
+            Err(_) => sleep(Duration::from_secs(10)),
+        }
+    }
+
+    let mut client: DiscordIpcClient = client.unwrap();
+
     let mut client_connected = false;
     let mut initial_timestamp: Option<i64> = None;
 
     loop {
-        std::thread::sleep(std::time::Duration::from_secs_f64(1.0));
+        sleep(Duration::from_secs_f64(1.0));
 
         let playing_status = cmus_status();
         
@@ -35,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
             set_activity(&mut client, &song, &mut client_connected, initial_timestamp);
         } else {
             client_connected = false;
-            client.close()?;
+            let _ = client.close();
             initial_timestamp = None;
         }
     }
